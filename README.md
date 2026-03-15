@@ -126,10 +126,4 @@ Initial release. Established the foundational asynchronous pipeline from the lla
 
 ## Roadmap — v3.0
 
-With the core backend stabilized and GPU-accelerated, development will pivot to the application layer:
-
-**UI Integration:** Build a conversational frontend in React or Next.js to interact with the API outside of Swagger UI.
-
-**Application Hooking:** Expose the REST endpoints to external local scripts as a free, self-hosted replacement for the OpenAI API in data analysis and automation workflows.
-
-**Endpoint Polish:** Add conversation memory handling and API key authentication for secure local access.
+With the core backend stabilized and GPU-accelerated, development will pivot to increasing the features and performance of the inference server
