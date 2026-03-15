@@ -18,7 +18,7 @@ Request validation is handled by Pydantic before anything reaches the inference 
 |---|---|
 | API Framework | `FastAPI` — async request handling |
 | Web Server | `Uvicorn` — ASGI server |
-| Inference Engine | `llama-cpp-python` — Python bindings for `llama.cpp` |
+| Inference Engine | `llama-cpp-python` (`cu122`) — CUDA-accelerated bindings for `llama.cpp` |
 | Data Validation | `Pydantic` — strict JSON schema enforcement |
 | Configuration | `pydantic-settings` — environment variable management via `.env` |
 
@@ -32,7 +32,7 @@ custom-inference-server/
 │   └── routes.py           # Endpoints: GET /health, POST /generate
 ├── core/
 │   ├── config.py           # Environment configuration (host, port, model path, GPU layers)
-│   └── model_manager.py    # llama.cpp wrapper, singleton loader, token stream generator
+│   └── model_manager.py    # llama.cpp wrapper, singleton loader, async token stream generator
 ├── schemas/
 │   └── request.py          # Request schema and parameter validation
 ├── models/                 # Directory for .gguf model weights (gitignored)
@@ -76,8 +76,11 @@ Streams a text generation response token-by-token.
 
 ### Requirements
 
+Install the CUDA-accelerated wheel directly — do not install the standard `llama-cpp-python` from PyPI as it ships without GPU support:
+
 ```bash
-pip install fastapi uvicorn llama-cpp-python pydantic pydantic-settings
+pip install fastapi uvicorn pydantic pydantic-settings
+pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu122
 ```
 
 ### 1. Configure environment
@@ -91,7 +94,7 @@ N_GPU_LAYERS=-1
 N_CTX=4096
 ```
 
-`N_GPU_LAYERS=-1` offloads all layers to GPU. Set to `0` to run on CPU only.
+`N_GPU_LAYERS=-1` offloads all layers to GPU VRAM. Set to `0` to run on CPU only.
 
 ### 2. Start the server
 
@@ -103,14 +106,30 @@ The server starts at `http://127.0.0.1:8000`. Interactive API docs are available
 
 ---
 
-## Roadmap — v2.0 GPU Acceleration
+## Changelog
 
-The v1.0 baseline runs on CPU (`BLAS = 0`). The next phase refactors the engine for hardware acceleration and broader model support.
+### v2.0 — CUDA Acceleration & Engine Refactor
 
-**CUDA Acceleration (RTX 3060):** Replace the CPU-bound `llama-cpp-python` wheel with the pre-compiled `cu121` build and offload all layer calculations to GPU VRAM via `n_gpu_layers=-1`.
+**GPU Offloading:** Upgraded `llama-cpp-python` to the `cu122` pre-compiled wheel, offloading 100% of model layers to RTX 3060 VRAM.
 
-**Next-Gen Model Support:** Upgrade to the `Ministral-3` architecture (`Ministral-3-8B-Instruct-2512-Q4_K_M.gguf`) and refactor the `model_manager.py` generator logic to align with breaking changes in the latest `llama.cpp` API.
+**Performance:** Achieved a ~700% speed increase over the CPU baseline — scaling from ~9 t/s to ~66 t/s on `Mistral-7B-Instruct-v0.2`.
 
-**Hardware-Specific Optimizations:** Restrict computation to 6 physical cores (`N_THREADS=6`) to prevent Ryzen 5 cache bottlenecking, and increase prompt ingestion speed with `N_BATCH=512`.
+**Streaming Logic Refactor:** Rewrote the `model_manager.py` generator to support modern asynchronous token streaming and handle empty-packet errors during real-time generation.
 
-**Flash Attention:** Enable `flash_attn=True` for memory-efficient context scaling at longer sequence lengths.
+**Environment Architecture:** Hardened the Pydantic settings configuration to map `.env` variables (thread counts, batch sizes) directly into the C++ engine boot sequence.
+
+### v1.0 — CPU Baseline
+
+Initial release. Established the foundational asynchronous pipeline from the llama.cpp engine to the FastAPI layer with token streaming, request validation, and singleton model loading.
+
+---
+
+## Roadmap — v3.0
+
+With the core backend stabilized and GPU-accelerated, development will pivot to the application layer:
+
+**UI Integration:** Build a conversational frontend in React or Next.js to interact with the API outside of Swagger UI.
+
+**Application Hooking:** Expose the REST endpoints to external local scripts as a free, self-hosted replacement for the OpenAI API in data analysis and automation workflows.
+
+**Endpoint Polish:** Add conversation memory handling and API key authentication for secure local access.
