@@ -1,5 +1,5 @@
 import time
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 from schemas.request import ChatCompletionRequest
 from core.model_manager import model_engine
@@ -9,7 +9,7 @@ router = APIRouter()
 
 @router.get("/health")
 async def health_check():
-    """Honest health check reflecting actual engine status."""
+    
     if model_engine.llm is None:
         return JSONResponse(
             status_code=503, 
@@ -19,7 +19,7 @@ async def health_check():
 
 @router.get("/v1/models")
 async def list_models():
-    """OpenAI compatible stub so UI clients can detect the model."""
+    
     return {
         "object": "list",
         "data": [
@@ -34,8 +34,22 @@ async def list_models():
 
 @router.post("/v1/chat/completions")
 async def chat_completions(request: ChatCompletionRequest):
-    """Placeholder for Strike 2: Streaming vs Non-Streaming logic."""
-    return StreamingResponse(
-        model_engine.generate_stream(request), 
-        media_type="text/event-stream"
-    )
+    
+    if model_engine.llm is None:
+        raise HTTPException(status_code=503, detail="Model engine is offline or crashed.")
+
+    
+    if request.stream:
+        return StreamingResponse(
+            model_engine.generate_stream(request), 
+            media_type="text/event-stream"
+        )
+    
+    
+    else:
+        try:
+            
+            response_data = await model_engine.generate_async(request)
+            return JSONResponse(content=response_data)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
