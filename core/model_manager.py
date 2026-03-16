@@ -51,9 +51,15 @@ class ModelManager:
             "presence_penalty": request_data.presence_penalty,
             "stop": request_data.stop,
             "seed": request_data.seed,
+            "logprobs": request_data.logprobs,
         }
 
     async def generate_stream(self, request_data: ChatCompletionRequest):
+        if self.lock is None:
+            yield f"data: {json.dumps({'error': 'Server is still initializing.'})}\n\n"
+            yield "data: [DONE]\n\n"
+            return
+        
         if self.llm is None:
             yield f"data: {json.dumps({'error': 'Model not loaded'})}\n\n"
             yield "data: [DONE]\n\n"
@@ -103,6 +109,8 @@ class ModelManager:
         return self.llm.create_chat_completion(**params, stream=False)
 
     async def generate_async(self, request_data: ChatCompletionRequest):
+        if self.lock is None:
+            raise RuntimeError("Server is still initializing.")
         async with self.lock:
             loop = asyncio.get_running_loop()
             return await loop.run_in_executor(None, self._generate_sync, request_data)
