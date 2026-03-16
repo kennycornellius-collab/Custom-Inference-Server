@@ -1,4 +1,3 @@
-import time
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 from schemas.request import ChatCompletionRequest
@@ -9,24 +8,22 @@ router = APIRouter()
 
 @router.get("/health")
 async def health_check():
-    
     if model_engine.llm is None:
         return JSONResponse(
             status_code=503, 
-            content={"status": "offline", "error": "Model failed to load into memory."}
+            content={"status": "offline", "error": "Model failed to load."}
         )
     return {"status": "online", "model": settings.model_name}
 
 @router.get("/v1/models")
 async def list_models():
-    
     return {
         "object": "list",
         "data": [
             {
                 "id": settings.model_name,
                 "object": "model",
-                "created": int(time.time()),
+                "created": model_engine.created_at, 
                 "owned_by": "custom-inference-server"
             }
         ]
@@ -34,21 +31,16 @@ async def list_models():
 
 @router.post("/v1/chat/completions")
 async def chat_completions(request: ChatCompletionRequest):
-    
     if model_engine.llm is None:
-        raise HTTPException(status_code=503, detail="Model engine is offline or crashed.")
+        raise HTTPException(status_code=503, detail="Model engine is offline.")
 
-    
     if request.stream:
         return StreamingResponse(
             model_engine.generate_stream(request), 
             media_type="text/event-stream"
         )
-    
-    
     else:
         try:
-            
             response_data = await model_engine.generate_async(request)
             return JSONResponse(content=response_data)
         except Exception as e:

@@ -1,15 +1,31 @@
 import uvicorn
+import asyncio
 from fastapi import FastAPI
+from contextlib import asynccontextmanager
 from api.routes import router
+from core.model_manager import model_engine
+from core.config import settings
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await model_engine.async_setup()
+    yield
+
 
 app = FastAPI(
-    title="Custom AI Inference Server",
-    description="A local backend for serving quantized LLMs via llama.cpp.",
-    version="1.0.0"
+    title="Custom Local Inference Server",
+    description="An OpenAI-compatible API powered by llama-cpp-python.",
+    lifespan=lifespan
 )
+
 
 app.include_router(router)
 
 if __name__ == "__main__":
-    print("Starting Inference Server")
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    
+    uvicorn.run(
+        "main:app", 
+        host=settings.host, 
+        port=settings.port, 
+        reload=False 
+    )
