@@ -1,6 +1,7 @@
 import logging
 from llama_cpp import Llama
 from core.config import settings
+from schemas.request import ChatCompletionRequest 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,29 +17,38 @@ class ModelManager:
                 n_threads=settings.n_threads,
                 n_batch=settings.n_batch,
                 flash_attn=settings.use_flash_attention,
-                verbose=True 
+                verbose=False 
             )
+            logger.info(f"{settings.model_name} loaded into VRAM!")
         except Exception as e:
-            logger.error(f"ERROR: {e}")
+            logger.error(f"ERROR: Failed to load model. Details: {e}")
             self.llm = None
 
-    def generate_stream(self, prompt: str, max_tokens: int = 512, temperature: float = 0.7):
+    def generate_stream(self, request_data: ChatCompletionRequest):
         if self.llm is None:
             yield "Error: The model failed to load into memory."
             return
 
         try:
-            streamer = self.llm(
-                prompt=prompt,
-                max_tokens=max_tokens,
-                temperature=temperature,
+            messages = [{"role": msg.role, "content": msg.content} for msg in request_data.messages]
+
+            streamer = self.llm.create_chat_completion(
+                messages=messages,
+                max_tokens=request_data.max_tokens,
+                temperature=request_data.temperature,
+                top_p=request_data.top_p,
+                frequency_penalty=request_data.frequency_penalty,
+                presence_penalty=request_data.presence_penalty,
+                stop=request_data.stop,
                 stream=True
             )
-            for output in streamer:
-                if "choices" in output and len(output["choices"]) > 0:
-                    token = output["choices"][0].get("text", "")
-                    if token:
-                        yield token
+            
+            for chunk in streamer:
+                if "choices" in chunk and len(chunk["choices"]) > 0:
+                    delta = chunk["choices"][0].get("delta", {})
+                    content = delta.get("content", "")
+                    if content:
+                        yield content
                         
         except Exception as e:
             logger.error(f"Inference crash during streaming: {e}")
