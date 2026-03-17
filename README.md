@@ -37,13 +37,15 @@ custom-inference-server/
 │   └── request.py          # Chat completion request schema and parameter validation
 ├── models/                 # Directory for .gguf model weights (gitignored)
 ├── .env                    # Environment variables (not included)
-├── main.py                 # FastAPI application entry point
+├── main.py  
+├── test.py                 # Testing script that automatically spin up a virtual client and fire requests at the endpoints
 └── requirements.txt
 ```
 
 ---
 
 ## API Reference
+> **Authentication:** All `/v1/` endpoints are secured via middleware. You must pass an API key in the header of your requests: `Authorization: Bearer <YOUR_API_KEY>`.
 
 ### `GET /health`
 
@@ -130,6 +132,7 @@ N_GPU_LAYERS=-1
 N_CTX=4096
 N_BATCH=512
 USE_FLASH_ATTENTION=true
+API_KEY=your-secure-api-key-here
 ```
 
 `N_GPU_LAYERS=-1` offloads all layers to GPU VRAM. Set to `0` to run on CPU only.
@@ -145,6 +148,14 @@ The server starts at `http://127.0.0.1:8000` by default (configurable via `HOST`
 ---
 
 ## Changelog
+
+### v3.1 — Security & Integration Testing
+
+**Authentication Middleware:** Implemented dependency-injected API key validation using FastAPI's `Security` and `APIKeyHeader`, protecting all inference endpoints from unauthorized execution.
+
+**Integration Test Suite:** Built a comprehensive testing pipeline using `pytest` and `httpx`. The suite utilizes a shared ASGI lifespan fixture to prevent GPU memory limits during testing, and explicitly asserts 401 Unauthorized bounces, Pydantic 422 context-window rejections, and the precise formatting of `data: [DONE]` signals within Server-Sent Event (SSE) streams.
+
+---
 
 ### v3.0 — Async Hardening & OpenAI-Compatible Interface
 
