@@ -12,7 +12,7 @@ class ChatCompletionRequest(BaseModel):
     
     
     temperature: Optional[float] = Field(default=0.7, ge=0.0, le=2.0)
-    max_tokens: Optional[int] = Field(default=None, ge=1) 
+    max_tokens: Optional[int] = Field(default=512, ge=1, le=4096) 
     stream: Optional[bool] = False
     
     top_p: Optional[float] = Field(default=1.0, ge=0.0, le=1.0)
