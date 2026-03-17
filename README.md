@@ -117,8 +117,7 @@ Generates a chat completion. Supports both streaming and non-streaming responses
 Install the CUDA-accelerated wheel directly — do not install the standard `llama-cpp-python` from PyPI as it ships without GPU support:
 
 ```bash
-pip install fastapi uvicorn pydantic pydantic-settings
-pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu122
+pip install -r requirements.txt
 ```
 
 ### 1. Configure environment
