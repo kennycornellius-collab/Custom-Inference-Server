@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     n_threads: int = Field(default_factory=lambda: os.cpu_count() or 4) 
     n_batch: int = Field(default=512, ge=1)
     use_flash_attention: bool = True
+    api_key: str = "sk-local-dev-key"
 
     model_config = SettingsConfigDict(
         env_file=".env", 
