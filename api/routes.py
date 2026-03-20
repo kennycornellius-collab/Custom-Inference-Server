@@ -11,10 +11,11 @@ router = APIRouter()
 api_key_header = APIKeyHeader(name="Authorization", auto_error=True)
 
 def verify_api_key(api_key: str = Security(api_key_header)):
-    """Middleware to verify the Bearer token."""
-    if api_key != f"Bearer {settings.api_key}":
+    clean_incoming_key = api_key.replace("Bearer ", "").strip()
+    if clean_incoming_key != settings.api_key:
         raise HTTPException(status_code=401, detail="Unauthorized: Invalid API Key")
-    return api_key
+        
+    return clean_incoming_key
 
 @router.get("/health")
 async def health_check():
